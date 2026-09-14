@@ -1,0 +1,103 @@
+<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Why-Why Detective - Dashboard</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<style>
+body{font-family:Arial;margin:0;background:linear-gradient(135deg,#eaf5ff,#effaf3);color:#17324d}
+.wrap{max-width:1100px;margin:auto;padding:24px}
+.card{background:white;border-radius:22px;padding:28px;box-shadow:0 12px 35px #17324d22}
+h1{font-size:32px;margin-bottom:4px}
+.sub{color:#5b7284;margin-top:0}
+.top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.stats{display:flex;gap:14px;flex-wrap:wrap;margin:18px 0}
+.stat{background:#f1f6f9;padding:14px 20px;border-radius:14px;font-weight:bold;min-width:140px;text-align:center}
+.stat span{display:block;font-size:26px;color:#1261a0;margin-top:4px}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th{text-align:left;padding:10px 12px;background:#f7fafb;border-bottom:2px solid #dce7ee;font-size:13px;color:#5b7284;text-transform:uppercase}
+td{padding:10px 12px;border-bottom:1px solid #eef2f5}
+tr:hover td{background:#f9fcfe}
+.badge{padding:4px 12px;border-radius:20px;font-weight:bold;font-size:13px}
+.won{background:#eaf8f0;color:#205d3d}
+.trying{background:#fff8e6;color:#8a6d00}
+.btn{padding:10px 16px;border:0;border-radius:10px;font-weight:bold;cursor:pointer;background:#1261a0;color:white}
+.loading{text-align:center;padding:40px;color:#5b7284}
+input#search{padding:10px 14px;border-radius:10px;border:2px solid #dce7ee;font-size:14px;width:220px}
+</style></head><body><div class='wrap'><div class='card'>
+
+<div class='top'>
+  <div><h1>🕵️‍♂️ Why-Why Detective — Dashboard</h1><p class='sub'>Live results across all teams</p></div>
+  <div><input id='search' type='text' placeholder='Search team...' oninput='renderTable()'> <button class='btn' onclick='loadData()'>↻ Refresh</button></div>
+</div>
+
+<div class='stats'>
+  <div class='stat'>Teams played<span id='statTeams'>-</span></div>
+  <div class='stat'>Total attempts<span id='statAttempts'>-</span></div>
+  <div class='stat'>Teams won<span id='statWon'>-</span></div>
+</div>
+
+<div id='loading' class='loading'>Loading data...</div>
+<table id='resultsTable' style='display:none'>
+  <thead><tr><th>Team</th><th>Attempts</th><th>Best Score</th><th>Status</th><th>Last Attempt</th></tr></thead>
+  <tbody id='resultsBody'></tbody>
+</table>
+
+</div></div>
+<script>
+// ====== FIREBASE CONFIG - same project as the game ======
+const firebaseConfig = {
+  apiKey: "AIzaSyB-1YlgVWFf3noOxcb-o_O9-UpYj5Prxv0",
+  authDomain: "why-why-detective.firebaseapp.com",
+  projectId: "why-why-detective",
+  storageBucket: "why-why-detective.firebasestorage.app",
+  messagingSenderId: "225741807076",
+  appId: "1:225741807076:web:64809780a8d4ad6a99bbf1"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+// ==========================================================
+
+let teamRows = [];
+
+async function loadData(){
+  document.getElementById('loading').style.display='block';
+  document.getElementById('resultsTable').style.display='none';
+  const snap = await db.collection('Attempts').orderBy('timestamp','asc').get();
+  const teams = {}; // teamName -> { attempts, bestScore, won, lastTimestamp }
+
+  snap.forEach(doc=>{
+    const d = doc.data();
+    const name = d.teamName || 'Unknown';
+    if(!teams[name]) teams[name] = { attempts:0, bestScore:0, won:false, last:null };
+    teams[name].attempts++;
+    if(d.score > teams[name].bestScore) teams[name].bestScore = d.score;
+    if(d.passed) teams[name].won = true;
+    if(d.timestamp) teams[name].last = d.timestamp.toDate();
+  });
+
+  teamRows = Object.keys(teams).map(name=>({name, ...teams[name]}));
+  teamRows.sort((x,y)=> (y.won - x.won) || (x.attempts - y.attempts));
+
+  document.getElementById('statTeams').textContent = teamRows.length;
+  document.getElementById('statAttempts').textContent = snap.size;
+  document.getElementById('statWon').textContent = teamRows.filter(t=>t.won).length;
+
+  document.getElementById('loading').style.display='none';
+  document.getElementById('resultsTable').style.display='table';
+  renderTable();
+}
+
+function renderTable(){
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  const body = document.getElementById('resultsBody');
+  body.innerHTML='';
+  teamRows.filter(t=>t.name.toLowerCase().includes(q)).forEach(t=>{
+    const tr = document.createElement('tr');
+    const lastStr = t.last ? t.last.toLocaleString() : '-';
+    tr.innerHTML = `<td><b>${t.name}</b></td><td>${t.attempts}</td><td>${t.bestScore}/50</td>
+      <td><span class="badge ${t.won?'won':'trying'}">${t.won?'🏆 Won':'⏳ In progress'}</span></td>
+      <td>${lastStr}</td>`;
+    body.appendChild(tr);
+  });
+}
+
+loadData();
+</script></body></html>
