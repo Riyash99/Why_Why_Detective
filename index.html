@@ -1,0 +1,144 @@
+<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Why-Why Detective</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<style>
+body{font-family:Arial;margin:0;background:linear-gradient(135deg,#eaf5ff,#effaf3);color:#17324d}.wrap{max-width:1050px;margin:auto;padding:24px}.card{background:white;border-radius:22px;padding:28px;box-shadow:0 12px 35px #17324d22}h1{font-size:36px}.center{text-align:center}.hero{font-size:60px}.example{background:#f5fafc;border-left:6px solid #2e8b57;padding:18px;border-radius:12px;text-align:left;line-height:1.8;max-width:650px;margin:20px auto}.btn{padding:14px 20px;border:0;border-radius:12px;font-weight:bold;cursor:pointer}.primary{background:#1261a0;color:white}.muted{background:#edf2f6}.layout{display:grid;grid-template-columns:1fr 1.15fr;gap:20px}.panel{background:#f7fafb;padding:17px;border-radius:16px}.why{background:white;border:2px solid #dce7ee;border-radius:13px;padding:15px;margin:10px 0;cursor:grab}.slot{min-height:70px;background:white;border:2px dashed #bdceda;border-radius:13px;margin:10px 0;padding:12px;display:flex;align-items:center;gap:10px}.slot.over{border-color:#1261a0;background:#f1f8ff}.slot.filled{border-color:#2e8b57;background:#eefaf3}.num{width:34px;height:34px;border-radius:50%;background:#1261a0;color:white;display:flex;align-items:center;justify-content:center;font-weight:bold}.feedback{display:none;margin-top:15px;padding:14px;border-radius:10px;font-weight:bold}.good{background:#eaf8f0;color:#205d3d}.bad{background:#fff0ef;color:#8d302d}.top{display:flex;justify-content:space-between}.stat{font-weight:bold;background:#f1f6f9;padding:10px;border-radius:10px}
+.teambox{max-width:340px;margin:20px auto;text-align:left}.teambox label{font-weight:bold;display:block;margin-bottom:6px}.teambox input{width:100%;padding:12px;border-radius:10px;border:2px solid #dce7ee;font-size:16px;box-sizing:border-box}.teamtag{display:inline-block;background:#f1f6f9;padding:6px 14px;border-radius:20px;font-weight:bold;margin-bottom:10px}.attempt-msg{background:#fff8e6;border-left:6px solid #d4a017;padding:10px 16px;border-radius:10px;margin:14px auto;max-width:500px;font-weight:bold}
+@media(max-width:750px){.layout{grid-template-columns:1fr}.top{display:block}}
+</style></head><body><div class='wrap'><div class='card'>
+
+<div id='home' class='center'>
+  <div class='hero'>🕵️‍♂️🧀</div><h1>WHY-WHY DETECTIVE</h1>
+  <p>Drag the shuffled Why statements into the correct order.</p>
+  <div class='example'><b>🚨 Problem: Cheese disappeared</b><br>Why 1 — Jerry took it<br>Why 2 — Jerry was hungry<br>Why 3 — Cheese was accessible<br>Why 4 — Tom left it unattended<br>Why 5 — No standard for securing food</div>
+  <div class='teambox'>
+    <label>👥 Team Name</label>
+    <input id='teamNameInput' type='text' placeholder='Enter your team name'>
+  </div>
+  <div id='homeError' class='attempt-msg' style='display:none;background:#fff0ef;border-color:#8d302d'></div>
+  <button class='btn primary' onclick='handleStart()'>START GAME ▶️</button>
+</div>
+
+<div id='game' style='display:none'>
+  <div class='top'><div><h1>🔎 Arrange the Whys</h1><p>Cause → Cause → Cause → Root Cause</p></div><div class='stat'>🎯 Score: <span id='score'>0</span>/50</div></div>
+  <div class='center'><span class='teamtag' id='teamTag'></span></div>
+  <div class='example'>🚨 <b>Problem: Cheese disappeared</b></div>
+  <div class='layout'><div class='panel'><b>🔀 SHUFFLED CARDS</b><div id='cards'></div></div><div class='panel'><b>🎯 YOUR WHY-WHY CHAIN</b><div id='slots'></div></div></div>
+  <div id='feedback' class='feedback'></div>
+  <p><button class='btn muted' onclick='shuffleOnly()'>↻ Shuffle</button> <button class='btn primary' onclick='check()'>CHECK MY WHY-WHY →</button></p>
+</div>
+
+<div id='finish' class='center' style='display:none'>
+  <div class='hero'>🏆</div><h1>YOU WIN!</h1>
+  <h2 id='finishTeam'></h2>
+  <h3 id='finishAttempts'></h3>
+  <div class='example'>🚨 Problem: Cheese disappeared<br>🔎 Why 1 → <b>Jerry took it</b><br>🔎 Why 2 → <b>Jerry was hungry</b><br>🔎 Why 3 → <b>Cheese was accessible</b><br>🔎 Why 4 → <b>Tom left it unattended</b><br>🔎 Why 5 → <b>No standard for securing food</b></div>
+  <h2>💡 Key Learning</h2>
+  <p><b>Don't stop at the first cause.</b> Keep asking "Why?" until you reach a deeper, actionable root cause.</p>
+  <button class='btn primary' onclick='goHome()'>PLAY AGAIN (NEW TEAM)</button>
+</div>
+
+</div></div>
+<script>
+// ====== FIREBASE CONFIG - replace with your new project's config ======
+const firebaseConfig = {
+  apiKey: "AIzaSyB-1YlgVWFf3noOxcb-o_O9-UpYj5Prxv0",
+  authDomain: "why-why-detective.firebaseapp.com",
+  projectId: "why-why-detective",
+  storageBucket: "why-why-detective.firebasestorage.app",
+  messagingSenderId: "225741807076",
+  appId: "1:225741807076:web:64809780a8d4ad6a99bbf1"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+// ========================================================================
+
+const a=['Jerry took it','Jerry was hungry','Cheese was accessible','Tom left it unattended','No standard for securing food'];
+let cards=[],slots=[],drag=null;
+let currentTeam='';
+let attemptCount=0; // how many attempts this team has made (including the one in progress)
+
+function sh(x){for(let i=x.length-1;i;i--){let j=Math.floor(Math.random()*(i+1));[x[i],x[j]]=[x[j],x[i]]}}
+
+async function handleStart(){
+  const name = document.getElementById('teamNameInput').value.trim();
+  const errBox = document.getElementById('homeError');
+  if(!name){errBox.style.display='block';errBox.textContent='⚠️ Please enter a team name.';return}
+  errBox.style.display='none';
+  currentTeam = name;
+  document.getElementById('teamTag').textContent = '👥 ' + currentTeam;
+  // find how many attempts this team already has, so we know the current attempt number
+  try{
+    const snap = await db.collection('Attempts').where('teamName','==',currentTeam).get();
+    attemptCount = snap.size + 1;
+  }catch(e){
+    console.error('Could not fetch attempt history', e);
+    attemptCount = 1;
+  }
+  beginRound();
+}
+
+function beginRound(){
+  slots=[null,null,null,null,null];
+  cards=a.map((text,id)=>({text,id}));
+  sh(cards);
+  home.style.display='none';finish.style.display='none';game.style.display='block';
+  render();
+}
+
+function shuffleOnly(){beginRound()}
+
+function render(){
+  let cardsEl=document.getElementById('cards');cardsEl.innerHTML='';
+  cards.forEach(x=>{if(slots.includes(x.id))return;let e=document.createElement('div');e.className='why';e.draggable=true;e.innerHTML='🔎 <b>Why?</b><br>'+x.text;e.ondragstart=()=>drag=x.id;cardsEl.appendChild(e)});
+  let s=document.getElementById('slots');s.innerHTML='';
+  slots.forEach((id,i)=>{
+    let e=document.createElement('div');e.className='slot '+(id!==null?'filled':'');
+    e.innerHTML='<span class=num>'+(i+1)+'</span><span>'+(id===null?'Drop Why '+(i+1)+' here…':a[id])+'</span>';
+    e.ondragover=v=>{v.preventDefault();e.classList.add('over')};
+    e.ondragleave=()=>e.classList.remove('over');
+    e.ondrop=v=>{v.preventDefault();e.classList.remove('over');if(drag!==null){let old=slots.indexOf(drag);if(old>=0)slots[old]=null;slots[i]=drag;drag=null;render()}};
+    s.appendChild(e)
+  })
+}
+
+async function check(){
+  if(slots.includes(null)){msg('⚠️ Place all five cards first.','bad');return}
+  let n=slots.filter((x,i)=>x===i).length;
+  let passed = (n===5);
+  document.getElementById('score').textContent = n*10;
+
+  // save this attempt to Firestore
+  try{
+    await db.collection('Attempts').add({
+      teamName: currentTeam,
+      attemptNumber: attemptCount,
+      correctPositions: n,
+      score: n*10,
+      passed: passed,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      date: new Date().toISOString().slice(0,10)
+    });
+  }catch(e){
+    console.error('Could not save attempt', e);
+  }
+
+  if(passed){
+    document.getElementById('finishTeam').textContent = '👥 Team: ' + currentTeam;
+    document.getElementById('finishAttempts').textContent = 'Solved in ' + attemptCount + (attemptCount===1?' attempt':' attempts');
+    msg('🎉 Perfect! You found the root cause.','good');
+    setTimeout(()=>{game.style.display='none';finish.style.display='block'},700);
+  }else{
+    attemptCount++; // next try will be a new attempt number
+    msg('❌ '+n+'/5 positions correct. Attempt '+(attemptCount-1)+' logged — try again! Ask: "Does this cause naturally lead to the next Why?"','bad');
+  }
+}
+
+function msg(t,c){feedback.className='feedback '+c;feedback.textContent=t;feedback.style.display='block';setTimeout(()=>feedback.style.display='none',4000)}
+
+function goHome(){
+  document.getElementById('teamNameInput').value='';
+  currentTeam='';attemptCount=0;
+  finish.style.display='none';home.style.display='block';
+}
+</script></body></html>
