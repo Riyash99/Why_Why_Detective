@@ -92,7 +92,7 @@ function renderTable(){
   teamRows.filter(t=>t.name.toLowerCase().includes(q)).forEach(t=>{
     const tr = document.createElement('tr');
     const lastStr = t.last ? t.last.toLocaleString() : '-';
-    tr.innerHTML = `<td><b>${t.name}</b></td><td>${t.attempts}</td><td>${t.bestScore}/50</td>
+    tr.innerHTML = `<td><b>${t.name}</b></td><td>${t.attempts}</td><td>${t.bestScore}/40</td>
       <td><span class="badge ${t.won?'won':'trying'}">${t.won?'🏆 Won':'⏳ In progress'}</span></td>
       <td>${lastStr}</td>`;
     body.appendChild(tr);
