@@ -10,17 +10,36 @@ body{font-family:Arial;margin:0;background:linear-gradient(135deg,#eaf5ff,#effaf
 <div id='home' class='center'>
   <div class='hero'>🕵️‍♂️🧀</div><h1>WHY-WHY DETECTIVE</h1>
   <p>Drag the shuffled Why statements into the correct order.</p>
-  <div class='example'><b>🚨 Problem: Cheese disappeared</b><br>Why 1 — Jerry took it<br>Why 2 — Jerry was hungry<br>Why 3 — Cheese was accessible<br>Why 4 — Tom left it unattended<br>Why 5 — No standard for securing food</div>
   <div class='teambox'>
     <label>👥 Team Name</label>
     <input id='teamNameInput' type='text' placeholder='Enter your team name'>
   </div>
   <div id='homeError' class='attempt-msg' style='display:none;background:#fff0ef;border-color:#8d302d'></div>
-  <button class='btn primary' onclick='handleStart()'>START GAME ▶️</button>
+  <button class='btn primary' onclick='handleRegister()'>REGISTER & CONTINUE ▶️</button>
+</div>
+
+<div id='story' class='center' style='display:none'>
+  <div class='hero'>🧀🐭</div>
+  <h1>Tom &amp; Jerry — The Missing Cheese Mystery</h1>
+  <div class='example' style='max-width:700px'>
+    <b>The Scenario</b><br><br>
+    One morning, Tom prepares a delicious piece of cheese for his lunch.<br>
+    He places the cheese on the kitchen table and goes to get a plate.<br>
+    When Tom returns ...<br><br>
+    <b>THE CHEESE IS GONE!</b><br><br>
+    Tom immediately sees Jerry running away with the cheese.<br>
+    Tom thinks:<br>
+    <i>"JERRY STOLE MY CHEESE!"</i><br><br>
+    Tom starts chasing Jerry around the house.<br><br>
+    But the Lean problem solver stops him and asks:<br>
+    <i>"WAIT! Jerry taking the cheese is what happened ... but WHY did the cheese disappear?"</i><br><br>
+    And this is where our Why-Why investigation begins!
+  </div>
+  <button class='btn primary' onclick='beginRound()'>START INVESTIGATION ▶️</button>
 </div>
 
 <div id='game' style='display:none'>
-  <div class='top'><div><h1>🔎 Arrange the Whys</h1><p>Cause → Cause → Cause → Root Cause</p></div><div class='stat'>🎯 Score: <span id='score'>0</span>/50</div></div>
+  <div class='top'><div><h1>🔎 Arrange the Whys</h1><p>Cause → Cause → Cause → Root Cause</p></div><div class='stat'>🎯 Score: <span id='score'>0</span>/40</div></div>
   <div class='center'><span class='teamtag' id='teamTag'></span></div>
   <div class='example'>🚨 <b>Problem: Cheese disappeared</b></div>
   <div class='layout'><div class='panel'><b>🔀 SHUFFLED CARDS</b><div id='cards'></div></div><div class='panel'><b>🎯 YOUR WHY-WHY CHAIN</b><div id='slots'></div></div></div>
@@ -32,7 +51,7 @@ body{font-family:Arial;margin:0;background:linear-gradient(135deg,#eaf5ff,#effaf
   <div class='hero'>🏆</div><h1>YOU WIN!</h1>
   <h2 id='finishTeam'></h2>
   <h3 id='finishAttempts'></h3>
-  <div class='example'>🚨 Problem: Cheese disappeared<br>🔎 Why 1 → <b>Jerry took it</b><br>🔎 Why 2 → <b>Jerry was hungry</b><br>🔎 Why 3 → <b>Cheese was accessible</b><br>🔎 Why 4 → <b>Tom left it unattended</b><br>🔎 Why 5 → <b>No standard for securing food</b></div>
+  <div class='example'>🚨 Problem: Cheese disappeared<br>🔎 Why 1 → <b>Jerry took it</b><br>🔎 Why 2 → <b>Cheese was accessible</b><br>🔎 Why 3 → <b>Tom left it unattended</b><br>🔎 Why 4 → <b>No standard for securing food</b></div>
   <h2>💡 Key Learning</h2>
   <p><b>Don't stop at the first cause.</b> Keep asking "Why?" until you reach a deeper, actionable root cause.</p>
   <button class='btn primary' onclick='goHome()'>PLAY AGAIN (NEW TEAM)</button>
@@ -53,14 +72,14 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 // ========================================================================
 
-const a=['Jerry took it','Jerry was hungry','Cheese was accessible','Tom left it unattended','No standard for securing food'];
+const a=['Jerry took it','Cheese was accessible','Tom left it unattended','No standard for securing food'];
 let cards=[],slots=[],drag=null;
 let currentTeam='';
 let attemptCount=0; // how many attempts this team has made (including the one in progress)
 
 function sh(x){for(let i=x.length-1;i;i--){let j=Math.floor(Math.random()*(i+1));[x[i],x[j]]=[x[j],x[i]]}}
 
-async function handleStart(){
+async function handleRegister(){
   const name = document.getElementById('teamNameInput').value.trim();
   const errBox = document.getElementById('homeError');
   if(!name){errBox.style.display='block';errBox.textContent='⚠️ Please enter a team name.';return}
@@ -75,14 +94,15 @@ async function handleStart(){
     console.error('Could not fetch attempt history', e);
     attemptCount = 1;
   }
-  beginRound();
+  home.style.display='none';
+  story.style.display='block';
 }
 
 function beginRound(){
-  slots=[null,null,null,null,null];
+  slots=[null,null,null,null];
   cards=a.map((text,id)=>({text,id}));
   sh(cards);
-  home.style.display='none';finish.style.display='none';game.style.display='block';
+  home.style.display='none';story.style.display='none';finish.style.display='none';game.style.display='block';
   render();
 }
 
@@ -105,7 +125,7 @@ function render(){
 async function check(){
   if(slots.includes(null)){msg('⚠️ Place all five cards first.','bad');return}
   let n=slots.filter((x,i)=>x===i).length;
-  let passed = (n===5);
+  let passed = (n===4);
   document.getElementById('score').textContent = n*10;
 
   // save this attempt to Firestore
@@ -139,6 +159,6 @@ function msg(t,c){feedback.className='feedback '+c;feedback.textContent=t;feedba
 function goHome(){
   document.getElementById('teamNameInput').value='';
   currentTeam='';attemptCount=0;
-  finish.style.display='none';home.style.display='block';
+  finish.style.display='none';story.style.display='none';home.style.display='block';
 }
 </script></body></html>
